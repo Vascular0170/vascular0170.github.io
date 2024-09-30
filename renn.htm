@@ -1,0 +1,749 @@
+
+
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Maryland Renaissance Festival - powered by Gatemaster</title>
+    <link rel="icon" href="ecomimages/favicon.png" sizes="32x32" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+
+         
+    <link href="common/include/JQueryUI.css?v=29" type="text/css" rel="stylesheet" media="all" />     
+    <link href="common/include/EcommerceCSS.aspx?v=29&CompanyID=GM223" type="text/css" rel="stylesheet" media="all" /> 
+    <script type="text/javascript" src="common/include/JQuery.js?v=29"></script> 
+    <script type="text/javascript" src="common/include/JQueryUI.js?v=29"></script> 
+    <script type="text/javascript" src="common/include/EcommerceScripts.js?v=29"></script> 
+    <script type="text/javascript" src="common/include/jquery.validate.min.js?v=29"></script> 
+    <script type="text/javascript" src="common/include/timer.min.js?v=29"></script> 
+    
+    <link href="common/include/NavCSS.aspx?v=29&CompanyID=GM223" type="text/css" rel="stylesheet" media="all" /> 
+    
+    <script src="https://pos.gatemastertickets.com/js/jquery.colorbox.js?v=29" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://pos.gatemastertickets.com/css/colorbox.css?v=29"  type="text/css" rel="stylesheet" media="all" />
+    <script src="https://pos.gatemastertickets.com/js/Lib/jquery.blockUI.js?v=29" type="text/javascript"></script> 
+    <script src="https://pos.gatemastertickets.com/js/Core/utility.js?v=29" type="text/javascript"></script>
+    <script src="https://pos.gatemastertickets.com/js/Lib/numeral.min.js"%></script> 
+
+
+    <script src="common/include/DoubleTapToGo.js" type="text/javascript"></script> 
+     
+   
+
+    <script type="text/javascript">
+        
+        // Global variables
+        var Globals = {
+            ApiUrl: 'https://api.gatemastertickets.com',
+            UiUrl: 'https://pos.gatemastertickets.com'
+        };
+
+        $(function () {
+
+            // if not on https then bump the user to https URL
+            WebManager.MoveToSSL();
+
+            
+
+
+            $('#aspnetForm').on('keyup keypress', function (e) {
+                var keyCode = e.keyCode || e.which;
+                if (keyCode === 13) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            
+
+            
+            var allCookies = document.cookie.split(';');            
+            var companyID, companyVirDir;
+
+            // find the latest cookie which should be the newest and accurate
+            for (var i = 1; i <= allCookies.length; i++) {
+
+                if (allCookies[i - 1].indexOf('CompanyID') >= 0)
+                    companyID = allCookies[i - 1].split('=')[1];
+
+                if (allCookies[i - 1].indexOf('CompanyVirDir') >= 0)
+                    companyVirDir = allCookies[i - 1].split('=')[1];
+            }
+
+            // delete existing cookies
+            CookieManager.DeleteCookie('CompanyID');
+            CookieManager.DeleteCookie('CompanyVirDir');
+
+            console.log('document.cookie', document.cookie, 'companyID', companyID, 'companyVirDir', companyVirDir)
+
+            // reset  the cookies to the correct value          
+            CookieManager.SetCookie('CompanyID', companyID, 'gatemastertickets.com');
+            CookieManager.SetCookie('CompanyVirDir', companyVirDir, 'gatemastertickets.com');
+            
+
+            
+
+        });
+    </script>
+
+    
+    <script type="text/javascript">
+        var isMobileNavAgent = false; // flag to track if the actual device is mobile from the request agent
+        var isMobileNav = false; // flag to track if the design is in mobile mode or full mode
+        var menuWidth = 0; // store the width of the menu as a global variable so we always know what the original standard nav width was
+
+        $(function () {
+
+            // method to handle a navigation-only category link click
+            $('.nolink').click(function (e) {
+                e.preventDefault();
+            });
+            
+            // load the shopping cart
+            $('#btnCart').click(function (e) {
+                e.preventDefault();
+
+                location.href = 'shopcart.aspx';
+            });
+
+            // load the shopping cart
+            $('.btnAccount').click(function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                $('#acctMenu').show();
+            });
+
+            // calculate the standard menu width on initial load       
+            $.each($('#menuNav > li'), function(index, value) {
+                //console.log($(this).html())
+                //console.log($(this).width())
+
+                menuWidth += $(this).width();
+            });
+              
+
+            // START: methods to manage responsive navigation                      
+
+            $('#btnHamburgerIcon').click(function (e) {
+                e.preventDefault();
+
+                var navElem = $('#mainNav');
+                navElem.toggle();
+            });
+
+            $(document).click(function (e) {
+
+                $('#acctMenu').hide(); // if clicked anywhere on window then close the account menu
+            });
+
+         
+            $('.sub-menu').doubleTapToGo();
+
+            // END: methods to manage responsive navigation
+
+            
+
+            // initialize the navigation
+            swapNav();
+	        
+            $(window).resize(function () {
+                swapNav();
+            }); 
+        });
+
+        function swapNav() {
+            
+            var switchToMobile = false;
+            var navElem = $('#mainNav');
+
+            if(isMobileNavAgent) {
+                switchToMobile = true;
+            }
+            else {
+                // determine based on client side if nav should be standard or mobile               
+                var navCollision = false;
+        
+                var rightNavLeftEdge = $('#navRight').offset().left;
+                
+                //console.log('rightNavLeftEEdge: ' + rightNavLeftEdge)
+                //console.log('menuWidth: ' + menuWidth)
+
+                if((menuWidth + 25) > rightNavLeftEdge)
+                    navCollision=true;
+             
+                //console.log('navCollision: ' + navCollision)
+                   
+                var width = $(document).width();
+                
+                
+                // NOTE: fullMenu/fullMenuSub are added/removed dynamically based on the width of the dynamic menu colliding with the right nav elements. Normally this would be done in the "media only screen" CSS but the width if the menu is dynamic and dynamic media CSS elements are pretty much impossible 
+
+                // if nav and right menu collide or narrow width then go to mobile menu
+                if (!isMobileNav && (width <= 500 || navCollision)) { //  || width <= menuWidth //!isMobileNav && 
+                    // set to MOBILE nav
+                    $('.menu').removeClass('fullMenu');
+                    $('.sub-menu').removeClass('fullMenuSub');
+                   // $('.sub-menu').removeClass('fullMenuSubSub');
+                    //$('.sub-menu').addClass('mobileMenuSub');
+                    
+                    switchToMobile = true;
+                
+                }
+                else if (isMobileNav && !navCollision) {
+                    // set to STANDARD nav
+		            if(!$('.menu').hasClass('fullMenu')) {
+	                    $('.menu').addClass('fullMenu');
+		            }
+		            if(!$('.sub-menu').hasClass('fullMenuSub')) {
+		                $('.sub-menu').addClass('fullMenuSub');	
+		                //$('.sub-menu').addClass('fullMenuSubSub');
+		            }
+
+		           // $('.sub-menu').removeClass('mobileMenuSub');       
+
+		            switchToMobile = false;
+
+                    $('#contHamburgerIcon').hide();
+                    navElem.removeClass('narrowNav');
+                    $('#mainNav').show();
+                    $('#narrowNavBar').hide();
+                    isMobileNav=false;
+                } 
+
+                //console.log('isMobileNav: ' + isMobileNav)
+            }
+
+            if(switchToMobile) {
+                // switch to the hamburger menu - absolute position
+                $('#mainNav').hide();
+                $('#contHamburgerIcon').show();
+                navElem.addClass('narrowNav');
+                $('#narrowNavBar').show();
+                isMobileNav=true;
+
+                //console.log($('#styleFull').length)
+                //$('#styleFull').remove();
+                //console.log($('#styleFull').length)
+            }
+            else {
+                //addStyle('.nav .menu{display:flex;flex-flow:row wrap}.nav .menu>.menu-item{border-width:0 1px 0 0}.nav .menu>.menu-item>a .dropdown-icon{padding-left:0}.nav .menu .menu-item:active>.sub-menu,.nav .menu .menu-item:focus>.sub-menu,.nav .menu .menu-item:hover>.sub-menu{width:225px}.nav .menu .sub-menu{position:absolute;z-index:3000;top:100%;left:0;border-width:0}.nav .menu .sub-menu .sub-menu{top:0;left:100%}.nav .menu .dropdown-icon{border-width:0;padding:1em}.nav--rtl .menu>.menu-item>a .dropdown-icon{padding-left:1em;padding-right:0}.nav--rtl .menu .sub-menu{top:100%;left:auto;right:0}.nav--rtl .menu .sub-menu .sub-menu{left:auto;right:100%}.nav--cen .menu{justify-content:center}');
+            }
+        }
+
+        function divsColliding( el1, el2 ) {
+         
+            var rect1 = el1.getBoundingClientRect();
+            var rect2 = el2.getBoundingClientRect();
+
+            //alert('rect1.top: ' + rect1.top + ',rect2.bottom: ' + rect2.bottom  + ',rect1.right: ' + rect1.right + ',rect2.left: ' + rect2.left);
+
+            return !(
+              rect1.top > rect2.bottom ||
+              rect1.right < rect2.left ||
+              rect1.bottom < rect2.top ||
+              rect1.left > rect2.right
+            );
+
+        }
+
+        function addStyle(styleString) {
+            const style = document.createElement('style');
+            style.id='styleFull';
+            style.textContent = styleString;
+            document.head.append(style);
+        }
+        
+    </script>
+
+    
+
+    
+
+
+    
+
+    
+
+</head>
+<body>
+
+    <script type='text/javascript' src='//static.queue-it.net/script/queueclient.min.js'></script>
+<script
+   data-queueit-spa=”true”
+   data-queueit-intercept-domain='www.gatemastertickets.com'
+   data-queueit-intercept='true'
+   data-queueit-c='rennfest'
+   type='text/javascript'
+   src='//static.queue-it.net/script/queueconfigloader.min.js'>
+</script>
+<style> 
+
+.desktop { display: none;} 
+
+.mobile { display: block;} 
+
+.desktop img, .mobile img, img.desktop, img.mobile {  width: 100%;  max-width:100%; height: auto; margin-top:4em} 
+
+@media (min-width: 768px) { 
+
+  .desktop { display: block !important; } 
+
+  .mobile { display: none !important; } 
+
+} 
+
+</style> 
+
+<img class="desktop" src="https://gatemasterdev.blob.core.windows.net/storage/GM223/ecomimages/Marylandbanner4.png" /> 
+
+<img class="mobile" src="https://gatemasterdev.blob.core.windows.net/storage/GM223/ecomimages/white_stag.jpg" /> 
+
+   <div class="GMForm GMFormBottom">
+
+    
+    
+        
+        <div id="navWrapperSpacer" style="height:40px;"></div>
+
+        
+        <div class="navWrapper">
+
+            <div class="navHeader"></div>
+            <div class="nav menu narrowNavBar" id="narrowNavBar"></div>
+
+            <div id="navRight" class="navRight">    
+                
+                <div id="accountCont" class="accountCont">
+            
+                    <span class="btnAccount accountArrow" id="accountArrow"></span>
+
+                     
+                    <a href="#" class="btnAccount">My Account</a>
+                     <div id="acctMenu" class="accountMenu"> 
+
+                         
+
+                             <table width="100%">
+                             <tr><td align="center">
+                           
+                                 <a href="customerdashboard.aspx">My Orders</a>
+                                <br />
+                                 <a href="logout.aspx">Logout</a>
+                           
+                             </td></tr>
+                             </table>
+                         
+
+                 
+                     </div>
+                </div>
+
+                
+
+                <div id="btnCart" class="btnCart">
+                    <a href="#"><img src="ecomimages/cart.png" /></a>
+                    <div id="cartCount" class="cartCount">
+                        <div id="cartCountText" class="cartCountText">0</div>
+                    </div>
+                </div>
+
+            </div> 
+    
+
+            <div id="contHamburgerIcon" class="contHamburgerIcon">
+                <a href="#"><img src="ecomimages/hamburger-icon.png" id="btnHamburgerIcon" /></a>
+            </div>
+
+  
+            
+            <div class="nav" id="mainNav"><ul class="menu fullMenu" id="menuNav"><li depth="1" class="menu-item"><a href="https://rennfest.com?catid=5">Home</a></li><li depth="1" class="menu-item"><a href="index_event_schedule.aspx?id=32&date=9/1/2024&catid=4">Peak Season Tickets (September 14 thru October 20)</a></li></ul></div>
+        
+        </div>  
+        
+    
+    
+
+        <div class="GMFormInner">
+            <div class="cA">
+
+                
+                
+             </div>
+
+            <form name="aspnetForm" method="post" action="/store/index_event_schedule.aspx?id=32&amp;date=9/1/2024&amp;CompanyID=GM223&amp;clear=false" id="aspnetForm" enctype="multipart/form-data">
+<div>
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwULLTEzNjI5NTMzMjgPFgIeE1ZhbGlkYXRlUmVxdWVzdE1vZGUCARYCZg9kFggCAw8PFgIeB1Zpc2libGVoZGQCBA9kFgJmDxYCHgRUZXh0BacHPHNjcmlwdCB0eXBlPSd0ZXh0L2phdmFzY3JpcHQnIHNyYz0nLy9zdGF0aWMucXVldWUtaXQubmV0L3NjcmlwdC9xdWV1ZWNsaWVudC5taW4uanMnPjwvc2NyaXB0Pg0KPHNjcmlwdA0KICAgZGF0YS1xdWV1ZWl0LXNwYT3igJ10cnVl4oCdDQogICBkYXRhLXF1ZXVlaXQtaW50ZXJjZXB0LWRvbWFpbj0nd3d3LmdhdGVtYXN0ZXJ0aWNrZXRzLmNvbScNCiAgIGRhdGEtcXVldWVpdC1pbnRlcmNlcHQ9J3RydWUnDQogICBkYXRhLXF1ZXVlaXQtYz0ncmVubmZlc3QnDQogICB0eXBlPSd0ZXh0L2phdmFzY3JpcHQnDQogICBzcmM9Jy8vc3RhdGljLnF1ZXVlLWl0Lm5ldC9zY3JpcHQvcXVldWVjb25maWdsb2FkZXIubWluLmpzJz4NCjwvc2NyaXB0Pg0KPHN0eWxlPiANCg0KLmRlc2t0b3AgeyBkaXNwbGF5OiBub25lO30gDQoNCi5tb2JpbGUgeyBkaXNwbGF5OiBibG9jazt9IA0KDQouZGVza3RvcCBpbWcsIC5tb2JpbGUgaW1nLCBpbWcuZGVza3RvcCwgaW1nLm1vYmlsZSB7ICB3aWR0aDogMTAwJTsgIG1heC13aWR0aDoxMDAlOyBoZWlnaHQ6IGF1dG87IG1hcmdpbi10b3A6NGVtfSANCg0KQG1lZGlhIChtaW4td2lkdGg6IDc2OHB4KSB7IA0KDQogIC5kZXNrdG9wIHsgZGlzcGxheTogYmxvY2sgIWltcG9ydGFudDsgfSANCg0KICAubW9iaWxlIHsgZGlzcGxheTogbm9uZSAhaW1wb3J0YW50OyB9IA0KDQp9IA0KDQo8L3N0eWxlPiANCg0KPGltZyBjbGFzcz0iZGVza3RvcCIgc3JjPSJodHRwczovL2dhdGVtYXN0ZXJkZXYuYmxvYi5jb3JlLndpbmRvd3MubmV0L3N0b3JhZ2UvR00yMjMvZWNvbWltYWdlcy9NYXJ5bGFuZGJhbm5lcjQucG5nIiAvPiANCg0KPGltZyBjbGFzcz0ibW9iaWxlIiBzcmM9Imh0dHBzOi8vZ2F0ZW1hc3RlcmRldi5ibG9iLmNvcmUud2luZG93cy5uZXQvc3RvcmFnZS9HTTIyMy9lY29taW1hZ2VzL3doaXRlX3N0YWcuanBnIiAvPiBkAgYPFgIeBmFjdGlvbgVQL3N0b3JlL2luZGV4X2V2ZW50X3NjaGVkdWxlLmFzcHg/aWQ9MzImZGF0ZT05LzEvMjAyNCZDb21wYW55SUQ9R00yMjMmY2xlYXI9ZmFsc2UWAgIDD2QWBgIBD2QWAmYPFgIfAmVkAgMPZBYEZg9kFgJmD2QWAmYPFgIfAgWbATxjZW50ZXI+VG8gbWFrZSBhIHB1cmNoYXNlIG9mIHRoZXNlIGl0ZW1zIHlvdSBtdXN0IGZpcnN0IHB1cmNoYXNlIGEgbWVtYmVyc2hpcC4gSWYgeW91IGhhdmUgYWxyZWFkeSBwdXJjaGFzZWQgYSBtZW1iZXJzaGlwIHRoZW4gbG9naW4gdG8gY29udGludWUuPC9jZW50ZXI+ZAIBD2QWAmYPZBYCAgEPPCsACgEADxYGHgtWaXNpYmxlRGF0ZQYAwMsFGcrcCB4IQ3NzQ2xhc3MFFmNhbERhdGUgR01HZW5lcmFsVGFibGUeBF8hU0ICAmRkAgUPZBYCZg8WAh8CZWQCCA9kFgJmDxYCHwIFwgU8Zm9vdGVyPiAgPGNlbnRlcj4NCjxkaXYgY2xhc3M9ImNvbnRhY3QtaW5mbyI+DQogICAgPGgyPkNvbnRhY3QgVXM8L2gyPg0KICAgIDxwPsKpIDIwMjQsIE1hcnlsYW5kIFJlbmFpc3NhbmNlIEZlc3RpdmFsLiBBbGwgUmlnaHRzIFJlc2VydmVkLiwgUC5PLiBCb3ggMzE1LCBDcm93bnN2aWxsZSwgTUQgMjEwMzIsICg4MDApIDI5Ni03MzA0LCBpbmZvQHJlbm5mZXN0LmNvbTwvcD4NCjwvZGl2Pg0KICA8ZGl2IGNsYXNzPSJzb2NpYWwtaWNvbnMiPg0KPGgyPkZvbGxvdyBVcyBvbiBTb2NpYWwgTWVkaWE8L2gyPg0KPGEgaHJlZj1odHRwczovL3d3dy5mYWNlYm9vay5jb20vbWRyZW5mZXN0PjxpbWcgc3JjPWh0dHBzOi8vZ2F0ZW1hc3RlcmRldi5ibG9iLmNvcmUud2luZG93cy5uZXQvc3RvcmFnZS9HTTIyMy9lY29taW1hZ2VzLzMxNzc1Ml9mYWNlYm9va19zb2NpYWxfbWVkaWFfc29jaWFsX2ljb24ucG5nIGFsdD0iRmFjZWJvb2siPjwvYT4NCjxhIGhyZWY9aHR0cHM6Ly90d2l0dGVyLmNvbS9tZHJlbmZlc3Q+PGltZyBzcmM9aHR0cHM6Ly9nYXRlbWFzdGVyZGV2LmJsb2IuY29yZS53aW5kb3dzLm5ldC9zdG9yYWdlL0dNMjIzL2Vjb21pbWFnZXMvMzIyNTE4M19hcHBfbG9nb19tZWRpYV9wb3B1bGFyX3NvY2lhbF9pY29uLnBuZyBhbHQ9IlR3aXR0ZXIiPjwvYT4NCiAgPC9kaXY+PC9jZW50ZXI+PGJyPjxicj48YnI+PGJyPg0KPC9mb290ZXI+ZGSpsJS3Qx03H96Bn/Hv5UsWkPfb4twdCnBdJP1MaiTeVA==" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['aspnetForm'];
+if (!theForm) {
+    theForm = document.aspnetForm;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="6E5AAEAD" />
+</div>
+                <div id="ctl00_ValidationSummary1" style="color:Red;display:none;">
+
+</div>
+                <div>
+                    
+        
+
+    
+
+
+
+<script type="text/javascript">
+
+	function GoTickets(dateCalendar, fAvailable) {
+
+		if (fAvailable) // send to choose tickets
+			location.href = 'ChooseTicket.aspx?id=32&date=' + dateCalendar;
+		else if (fAvailable == null)
+			alert(dateCalendar + ' is not available. Choose another date.');
+		else
+			alert(dateCalendar + ' is sold out. Choose another date.');
+	}
+
+	function GetCalendarData(dateCalendar) {
+
+		var CalBackup = $('#FullCal').html();
+
+		// set to the spinner while getting data
+		$('#FullCal').html('<center><img src="common/images/loader.gif" style="vertical-align: middle; width:40px;" /></center>');
+
+		window.setTimeout(function () { GetCalendarDataInvoke(dateCalendar, CalBackup); }, 1000);
+	}
+
+	function GetCalendarDataInvoke(dateCalendar, CalBackup) {
+
+		// make AJAX call to get data
+	    var Params = 'Operation=GetCalendarData&MerchItemIDs=32&SelectedDate=' + dateCalendar + '&mode=summary';
+		
+		var Result = RemotePost('ProcessHandler.aspx', false, Params);
+		var RespCheck = ValidateResponse(Result);
+
+		if (RespCheck[0]) {
+			var CalStart = Result.indexOf('<calendar>') + 10;
+			var CalEnd = Result.indexOf('</calendar>') - CalStart;
+
+			// parse out only the calendar
+			Result = Result.substr(CalStart, CalEnd);
+
+			$('#FullCal').html(Result);
+		}
+		else
+		    $('#FullCal').html(CalBackup);
+
+		updateCalendarView();
+	}
+
+    $(function () {
+	
+        $('body').on('click', '.FullCalAvailTemplate', function (event) {
+            GoTickets($(this).attr('datecalendar'), $(this).attr('fAvailable'))
+        });
+
+        //$('body').on('click', '.FullCalAmountLeftTitle', function (event) {
+        //    console.log($(this).parent().attr('datecalendar'))
+        //    console.log($(this).parent().attr('fAvailable'))
+        //    //GoTickets($(this).parent().attr('datecalendar'), $(this).parent().attr('fAvailable'))
+        //});
+        
+
+        // on load update the calendar view 
+        updateCalendarView();
+    });
+
+    function updateCalendarView() {
+        $('.FullCallNotAvailEmbedded').parent().addClass('FullCallNotAvailEmbedded');
+        $('.FullCallAvailEmbedded').parent().addClass('FullCallAvailEmbedded');
+
+        $('.calDate').prop('title', '');  // remove title from the calendar tag so it doesn't popup with the over hover messages
+    }
+</script>
+
+<style>
+    
+    
+        .calDate {
+            height: 400px;      
+        }       
+    
+
+    .calNav {
+         width:50px; 
+         display:inline-block;
+    }
+
+    .calNav a {
+         color:#000;
+         text-decoration:none;
+    }
+
+        
+    /* START: full page event calendar */
+    .FullCalOtherMonth
+    {
+        background-color: #eee;
+    }
+    .FullCalAvailTemplate, .FullCalNotAvailTemplate
+    {
+        text-align: center;
+        width:100%;
+        /*border:1px solid red;*/
+    }
+
+    .FullCalTemplateContainer
+    {
+	    width:100%;
+        /*height:55px;*/
+        text-align: center;
+        padding:5px;
+    }
+
+    .FullCalAvailTemplate, .FullCalNotAvailTemplate
+    {
+        /*background-repeat: no-repeat;
+        background-position:center;*/
+        /*width:25px;
+        height:25px;*/
+        /*display: inline-block;*/
+        /*position: relative;*/
+    
+    }
+
+    .FullCalAvailTemplate
+    {
+        cursor: pointer;
+    }
+    
+    .FullCalNotAvailTemplate 
+    {
+    }
+      
+  
+    .FullCalAmountLeftTitle
+    {
+        font-size: 11px;
+        width:100%;
+        text-align:center;
+        /*margin-bottom: -15px;
+        position: absolute; 
+        bottom: 0px;*/ 
+        /*left: 0px;*/
+        white-space: nowrap;
+        /*padding-top:40px;*/
+        /*border:1px solid red;*/
+    }
+
+    .FullCalContainerHeader, .FullCalContainer, .FullCalContainerBorder
+    {
+    }
+
+    #FullCal
+    {
+        /*width:500px;*/ 
+        
+            min-height:500px; /* height must be greater than calendar control height when it has all X's/checkmarks filled in */
+        
+        vertical-align: middle;
+        text-align: center;
+    }
+
+    #FullCalContainer .calendarDayHeader{}
+    #FullCalContainer .calendarDay{}
+    #FullCalContainer .nextprev{}
+    #FullCalContainer .otherMonth{}
+    #FullCalContainer .selected{}
+    #FullCalContainer .calendarTitle{}
+    #FullCalContainer .today{}
+
+    /* END: full page event calendar */
+
+    /* update to make calendar responsive */
+    .GMGeneralTable th { 
+        padding: 8px 2px 5px 2px;
+    }
+</style>
+
+
+
+
+
+
+    <table border="0" cellpadding="4" cellspacing="0" width="100%">
+
+    
+    
+        <tr><td>
+        <div class="GMHeader">Festival Gates Open At 10:00 am</div>
+        <p><strong><font color="#c0504d"></font></strong></p><p><strong>Your Festival Ticket Is Valid For Arrival Any Time After 10:00 am</strong></p><p><strong>Print your ticket at home and proceed directly to the entrance gates</strong></p><p><strong>&nbsp; or</strong></p><p><strong>Have your ticket scanned at the entrance gate on your phone</strong></p><p><strong>The festival is open rain or shine. &nbsp;</strong></p><p><br></p>
+        <br />
+        </td></tr>
+    
+
+    <tr><td align="center"> 
+
+    <div id="FullCal">
+    
+
+
+
+
+<calendar> 
+
+<div class="FullCalContainerHeader"></div>
+<div class="FullCalContainer" id="FullCalContainer">
+ 
+    <table border="0" cellpadding="4" cellspacing="0" width="100%">
+    <tr class="">
+    <td align="left">
+    <div class="boxEffect calNav" style="border:0px;"><a href="javascript:GetCalendarData('8/1/2024');" style="font-size:32px;">&larr;</a></div>
+    </td>
+    <td align="center">
+    September 2024
+    </td>
+    <td align="right">
+    <div class="boxEffect calNav" style="border:0px;"><a href="javascript:GetCalendarData('10/1/2024')" style="font-size:32px;">&rarr;</a></div>
+    </td></tr>
+    <tr><td colspan="3">
+
+        <table id="ctl00_ContentMain_EventCalendarShell1_EventCalendarObj_calDate" class="calDate GMGeneralTable" cellspacing="0" cellpadding="2" title="Calendar" border="0" style="background-color:White;border-width:1px;border-style:solid;width:100%;border-collapse:collapse;">
+	<tr><th class="calendarDayHeader" align="center" abbr="Sunday" scope="col" style="width:14%;">Sun</th><th class="calendarDayHeader" align="center" abbr="Monday" scope="col" style="width:14%;">Mon</th><th class="calendarDayHeader" align="center" abbr="Tuesday" scope="col" style="width:14%;">Tue</th><th class="calendarDayHeader" align="center" abbr="Wednesday" scope="col" style="width:14%;">Wed</th><th class="calendarDayHeader" align="center" abbr="Thursday" scope="col" style="width:14%;">Thu</th><th class="calendarDayHeader" align="center" abbr="Friday" scope="col" style="width:14%;">Fri</th><th class="calendarDayHeader" align="center" abbr="Saturday" scope="col" style="width:14%;">Sat</th></tr><tr><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">25</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">26</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">27</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">28</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">29</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">30</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">31</td></tr><tr><td class="calendarDay" align="left" valign="top" style="width:14%;">1</td><td class="calendarDay" align="left" valign="top" style="width:14%;">2</td><td class="calendarDay" align="left" valign="top" style="width:14%;">3</td><td class="calendarDay" align="left" valign="top" style="width:14%;">4</td><td class="calendarDay" align="left" valign="top" style="width:14%;">5</td><td class="calendarDay" align="left" valign="top" style="width:14%;">6</td><td class="calendarDay" align="left" valign="top" style="width:14%;">7</td></tr><tr><td class="calendarDay" align="left" valign="top" style="width:14%;">8</td><td class="calendarDay" align="left" valign="top" style="width:14%;">9</td><td class="calendarDay" align="left" valign="top" style="width:14%;">10</td><td class="calendarDay" align="left" valign="top" style="width:14%;">11</td><td class="calendarDay" align="left" valign="top" style="width:14%;">12</td><td class="calendarDay" align="left" valign="top" style="width:14%;">13</td><td class="calendarDay" align="left" valign="top" style="width:14%;">14</td></tr><tr><td class="calendarDay" align="left" valign="top" style="width:14%;">15</td><td class="calendarDay" align="left" valign="top" style="width:14%;">16</td><td class="calendarDay" align="left" valign="top" style="width:14%;">17</td><td class="calendarDay" align="left" valign="top" style="width:14%;">18</td><td class="calendarDay" align="left" valign="top" style="width:14%;">19</td><td class="calendarDay" align="left" valign="top" style="width:14%;">20</td><td class="calendarDay" align="left" valign="top" style="width:14%;">21</td></tr><tr><td class="calendarDay" align="left" valign="top" style="width:14%;">22</td><td class="calendarDay" align="left" valign="top" style="width:14%;">23</td><td class="calendarDay" align="left" valign="top" style="width:14%;">24</td><td class="calendarDay" align="left" valign="top" style="width:14%;">25</td><td class="calendarDay" align="left" valign="top" style="width:14%;">26</td><td class="calendarDay" align="left" valign="top" style="width:14%;">27</td><td class="calendarDay" align="left" valign="top" style="width:14%;">28</td></tr><tr><td class="today" align="left" valign="top" style="width:14%;">29</td><td class="calendarDay" align="left" valign="top" style="width:14%;">30</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">1</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">2</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">3</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">4</td><td class="calendarDay" align="left" valign="top" style="color:White;width:14%;">5</td></tr>
+</table>
+
+    </td></tr>
+    </table>
+</div>
+<div class="FullCalContainerBorder"></div>
+
+
+
+
+
+
+
+</calendar>
+    </div>
+
+      
+    </td></tr>
+
+
+    </table>
+
+    
+
+
+
+                </div>
+            
+<script type="text/javascript">
+//<![CDATA[
+var Page_ValidationSummaries =  new Array(document.getElementById("ctl00_ValidationSummary1"));
+//]]>
+</script>
+
+<script type="text/javascript">
+//<![CDATA[
+var ctl00_ValidationSummary1 = document.all ? document.all["ctl00_ValidationSummary1"] : document.getElementById("ctl00_ValidationSummary1");
+ctl00_ValidationSummary1.headertext = "Errors have occurred on the page.";
+ctl00_ValidationSummary1.showmessagebox = "True";
+ctl00_ValidationSummary1.showsummary = "False";
+//]]>
+</script>
+</form>
+        </div>
+    </div>
+
+
+    
+
+
+
+    
+
+    
+    <div id="messageSuccessCont" class="messageSuccessCont">        
+        <div id="messageSuccess" class="messageSuccess"></div>
+        
+    </div>
+
+
+    <div class="popupHide">
+	    <div id="messageBox" style="background-color:#fff;">
+            <div class="messageBoxHeader" id="messageBoxHeader"><span id="messageTitle"></span></div>
+		    <div class="messageBox modalWin">		    
+			    
+		        <div id="messageBody" class="messageBody"></div>
+				            
+                <div id="popContentBot" class="GMForm popContentBot cA">
+					<input type="button" id="messageBoxClose" value="OK" />
+				</div>
+			 </div>
+		</div>
+	</div>
+
+
+    <div id="popupContactClose" class="ui-button-icon ui-icon ui-icon-closethick"></div>
+    <div id="popupContact">
+        <div id="popContent"></div>
+    </div>
+    <div id="backgroundPopup"></div>
+
+    <div id="popupContentSave" class="popupHide"></div>
+
+
+    <div id="GMHoverPopup" style="display:none;"></div>
+    
+
+  
+    <div class="GMForm clear" id="footerCont">
+        
+        <center>           
+            
+
+            
+
+        </center>
+   </div>
+
+    <footer>  <center>
+<div class="contact-info">
+    <h2>Contact Us</h2>
+    <p>© 2024, Maryland Renaissance Festival. All Rights Reserved., P.O. Box 315, Crownsville, MD 21032, (800) 296-7304, info@rennfest.com</p>
+</div>
+  <div class="social-icons">
+<h2>Follow Us on Social Media</h2>
+<a href=https://www.facebook.com/mdrenfest><img src=https://gatemasterdev.blob.core.windows.net/storage/GM223/ecomimages/317752_facebook_social_media_social_icon.png alt="Facebook"></a>
+<a href=https://twitter.com/mdrenfest><img src=https://gatemasterdev.blob.core.windows.net/storage/GM223/ecomimages/3225183_app_logo_media_popular_social_icon.png alt="Twitter"></a>
+  </div></center><br><br><br><br>
+</footer>
+
+
+
+
+
+</body>
+</html>
